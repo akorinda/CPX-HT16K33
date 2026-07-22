@@ -1,0 +1,19 @@
+{
+    "name": "pxt-adafruit-alphanum",
+    "version": "0.0.1",
+    "description": "MakeCode extension for Adafruit Quad Alphanumeric HT16K33 Display on Circuit Playground Express",
+    "dependencies": {
+        "core": "*"
+    },
+    "files": [
+        "README.md",
+        "main.ts"
+    ],
+    "testFiles": [
+        "test.ts"
+    ],
+    "public": true,
+    "supportedTargets": [
+        "adafruit"
+    ]
+}
