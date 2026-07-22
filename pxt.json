@@ -1,20 +1,13 @@
 {
     "name": "pxt-cpx-ht16k33",
-    "version": "0.0.2",
+    "version": "0.0.1",
     "description": "Adafruit Quad Alphanumeric HT16K33 Display extension for CPX",
     "dependencies": {
-        "core": "*",
-        "device": "*"
+        "core": "*"
     },
     "files": [
         "README.md",
         "alphanumDisplay.ts"
     ],
-    "testFiles": [
-        "test.ts"
-    ],
-    "public": true,
-    "supportedTargets": [
-        "adafruit"
-    ]
+    "public": true
 }
