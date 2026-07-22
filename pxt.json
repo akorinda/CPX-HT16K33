@@ -1,10 +1,10 @@
 {
-    "name": "pxt-adafruit-alphanum",
-    "version": "0.0.1",
-    "description": "MakeCode extension for Adafruit Quad Alphanumeric HT16K33 Display on Circuit Playground Express",
-    "license": "MIT",
+    "name": "pxt-cpx-ht16k33",
+    "version": "0.0.2",
+    "description": "Adafruit Quad Alphanumeric HT16K33 Display extension for CPX",
     "dependencies": {
-        "core": "*"
+        "core": "*",
+        "device": "*"
     },
     "files": [
         "README.md",
