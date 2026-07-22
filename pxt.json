@@ -10,7 +10,7 @@
         "main.ts"
     ],
     "testFiles": [
-        "test.ts"
+        "alphanumDisplay.ts"
     ],
     "public": true,
     "supportedTargets": [
