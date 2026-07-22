@@ -7,10 +7,10 @@
     },
     "files": [
         "README.md",
-        "main.ts"
+        "alphanumDisplay.ts"
     ],
     "testFiles": [
-        "alphanumDisplay.ts"
+        "test.ts"
     ],
     "public": true,
     "supportedTargets": [
