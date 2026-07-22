@@ -9,6 +9,9 @@
         "README.md",
         "alphanumDisplay.ts"
     ],
+    "testFiles": [
+        "test.ts"
+    ],
     "public": true,
     "supportedTargets": [
         "adafruit"
