@@ -1,7 +1,7 @@
 /**
  * Extension for Adafruit Quad Alphanumeric HT16K33 Display (0.54" 14-segment)
  */
-//% color="#E67E22" icon="\uf13d" block="Alpha Display"
+//% color="#E67E22" icon="f13d" block="Alpha Display"
 namespace alphaDisplay {
     let _i2cAddr: number = 0x70;
     let _shiftIntervalMs: number = 300;
@@ -70,61 +70,54 @@ namespace alphaDisplay {
         0x0C09  // 'Z'
     ];
 
-    /**
-     * Helper to write a single byte command to the HT16K33 chip.
-     */
     function writeCmd(cmd: number) {
         let buf = pins.createBuffer(1);
         buf[0] = cmd;
         pins.i2cWriteBuffer(_i2cAddr, buf);
     }
 
-    /**
-     * Map characters to 14-segment mask values with lower-case normalization.
-     */
     function getFontMask(char: string): number {
         let code = char.charCodeAt(0);
         
-        // Normalize lower-case 'a-z' to upper-case 'A-Z'
         if (code >= 97 && code <= 122) {
-            code -= 32;
+            code = code - 32;
         }
 
-        // Map valid ASCII standard bounds
         if (code >= 32 && code <= 90) {
             return ALPHA_FONT[code - 32];
         }
         
-        return 0x0000; // Default blank digit for out-of-bounds chars
+        return 0x0000;
     }
 
-    /**
-     * Transmit digit segment masks as a single 9-byte contiguous buffer payload.
-     */
     function writeRawDigits(mask0: number, mask1: number, mask2: number, mask3: number) {
         let buf = pins.createBuffer(9);
-        buf[0] = 0x00; // Start RAM target register address
+        buf[0] = 0x00;
         
-        const masks = [mask0, mask1, mask2, mask3];
-        for (let i = 0; i < 4; i++) {
-            buf[1 + i * 2] = masks[i] & 0xFF;        // Low Byte (Segments A-H)
-            buf[2 + i * 2] = (masks[i] >> 8) & 0xFF; // High Byte (Segments I-N)
-        }
+        buf[1] = mask0 & 0xFF;
+        buf[2] = (mask0 >> 8) & 0xFF;
+        buf[3] = mask1 & 0xFF;
+        buf[4] = (mask1 >> 8) & 0xFF;
+        buf[5] = mask2 & 0xFF;
+        buf[6] = (mask2 >> 8) & 0xFF;
+        buf[7] = mask3 & 0xFF;
+        buf[8] = (mask3 >> 8) & 0xFF;
+
         pins.i2cWriteBuffer(_i2cAddr, buf);
     }
 
     /**
      * Initialize the HT16K33 Alphanumeric display.
-     * @param addr I2C address (default is 112 / 0x70)
+     * @param addr I2C address, default 112 (0x70)
      */
-    //% blockId="alpha_init" block="Initialize Alphanumeric Display at address %addr"
+    //% blockId="alpha_init" block="initialize alphanumeric display at address %addr"
     //% addr.defl=112
     //% weight=100
     export function initializeAlphanumericDisplay(addr: number = 112): void {
         _i2cAddr = addr;
-        writeCmd(0x21); // Turn on system clock oscillator
-        setBlinkRate(0); // Set display ON with blinking disabled
-        setBrightness(15); // Default to full brightness
+        writeCmd(0x21);
+        setBlinkRate(0);
+        setBrightness(15);
         clear();
         _initialized = true;
     }
@@ -132,57 +125,60 @@ namespace alphaDisplay {
     /**
      * Clear all segments on the display.
      */
-    //% blockId="alpha_clear" block="Clear Display"
+    //% blockId="alpha_clear" block="clear display"
     //% weight=95
     export function clear(): void {
         writeRawDigits(0, 0, 0, 0);
     }
 
     /**
-     * Set the display brightness (0 to 15).
-     * @param brightness level from 0 (dim) to 15 (max brightness)
+     * Set display brightness from 0 to 15.
+     * @param brightness brightness level from 0 to 15, default 15
      */
-    //% blockId="alpha_set_brightness" block="Set Brightness %brightness"
+    //% blockId="alpha_set_brightness" block="set brightness to %brightness"
     //% brightness.min=0 brightness.max=15 brightness.defl=15
     //% weight=90
-    export function setBrightness(brightness: number): void {
-        brightness = Math.clamp(0, 15, brightness);
+    export function setBrightness(brightness: number = 15): void {
+        if (brightness < 0) brightness = 0;
+        if (brightness > 15) brightness = 15;
         writeCmd(0xE0 | brightness);
     }
 
     /**
-     * Set the display blink rate.
-     * @param rate 0 = Off, 1 = 2Hz, 2 = 1Hz, 3 = 0.5Hz
+     * Set display blink rate.
+     * @param rate rate 0=off, 1=2Hz, 2=1Hz, 3=0.5Hz
      */
-    //% blockId="alpha_set_blink" block="Set Blink Rate %rate"
-    //% rate.defl=0
+    //% blockId="alpha_set_blink" block="set blink rate to %rate"
+    //% rate.min=0 rate.max=3 rate.defl=0
     //% weight=85
-    export function setBlinkRate(rate: number): void {
-        rate = Math.clamp(0, 3, rate);
+    export function setBlinkRate(rate: number = 0): void {
+        if (rate < 0) rate = 0;
+        if (rate > 3) rate = 3;
         writeCmd(0x81 | (rate << 1));
     }
 
     /**
-     * Set the scrolling speed interval for long text strings in milliseconds.
-     * @param ms delay between character shifts (minimum 50ms)
+     * Set scrolling interval in milliseconds.
+     * @param ms milliseconds per shift
      */
-    //% blockId="alpha_set_shift_interval" block="Set Shift Interval %ms ms"
+    //% blockId="alpha_set_shift_interval" block="set shift interval to %ms ms"
     //% ms.defl=300
     //% weight=80
-    export function setShiftInterval(ms: number): void {
-        _shiftIntervalMs = Math.max(50, ms);
+    export function setShiftInterval(ms: number = 300): void {
+        if (ms < 50) ms = 50;
+        _shiftIntervalMs = ms;
     }
 
     /**
-     * Display a text string. Displays static text if <= 4 characters, or auto-scrolls if longer.
-     * @param text text string to display
+     * Show a string of text. Auto-scrolls if longer than 4 characters.
+     * @param text string to show
      */
-    //% blockId="alpha_show_string" block="Show String %text"
-    //% text.defl="HELL"
+    //% blockId="alpha_show_string" block="show string %text"
+    //% text.defl="CPX"
     //% weight=75
     export function showString(text: string): void {
         if (!_initialized) {
-            initializeAlphanumericDisplay();
+            initializeAlphanumericDisplay(112);
         }
 
         if (text.length <= 4) {
@@ -208,10 +204,10 @@ namespace alphaDisplay {
     }
 
     /**
-     * Display a number on the display (right-aligned).
-     * @param num number to display (-999 to 9999)
+     * Show a number right-aligned.
+     * @param num number to display
      */
-    //% blockId="alpha_show_number" block="Show Number %num"
+    //% blockId="alpha_show_number" block="show number %num"
     //% num.defl=1234
     //% weight=70
     export function showNumber(num: number): void {
@@ -220,7 +216,6 @@ namespace alphaDisplay {
         if (str.length > 4) {
             str = str.substring(0, 4);
         } else {
-            // Pad spaces to the left to keep numbers right-aligned
             while (str.length < 4) {
                 str = " " + str;
             }
