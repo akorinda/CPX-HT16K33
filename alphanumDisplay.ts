@@ -7,7 +7,7 @@ namespace alphaDisplay {
     let _shiftIntervalMs: number = 300;
     let _initialized: boolean = false;
 
-    // 14-Segment ASCII Font Table (0x20 space to 0x7A 'z')
+    // 14-Segment ASCII Font Table (0x20 ' ' to 0x5A 'Z')
     const ALPHA_FONT: number[] = [
         0x0000, // ' '
         0x0006, // '!'
@@ -70,53 +70,67 @@ namespace alphaDisplay {
         0x0C09  // 'Z'
     ];
 
+    /**
+     * Helper to write a single byte command to the HT16K33 chip.
+     */
     function writeCmd(cmd: number) {
         let buf = pins.createBuffer(1);
         buf[0] = cmd;
         pins.i2cWriteBuffer(_i2cAddr, buf);
     }
 
+    /**
+     * Map characters to 14-segment mask values with lower-case normalization.
+     */
     function getFontMask(char: string): number {
         let code = char.charCodeAt(0);
+        
+        // Normalize lower-case 'a-z' to upper-case 'A-Z'
         if (code >= 97 && code <= 122) {
-            code -= 32; // Convert lower case to upper case
+            code -= 32;
         }
+
+        // Map valid ASCII standard bounds
         if (code >= 32 && code <= 90) {
             return ALPHA_FONT[code - 32];
         }
-        return 0x0000;
+        
+        return 0x0000; // Default blank digit for out-of-bounds chars
     }
 
+    /**
+     * Transmit digit segment masks as a single 9-byte contiguous buffer payload.
+     */
     function writeRawDigits(mask0: number, mask1: number, mask2: number, mask3: number) {
         let buf = pins.createBuffer(9);
-        buf[0] = 0x00; // Start at RAM address 0x00
+        buf[0] = 0x00; // Start RAM target register address
         
         const masks = [mask0, mask1, mask2, mask3];
         for (let i = 0; i < 4; i++) {
-            buf[1 + i * 2] = masks[i] & 0xFF;        // Low byte
-            buf[2 + i * 2] = (masks[i] >> 8) & 0xFF; // High byte
+            buf[1 + i * 2] = masks[i] & 0xFF;        // Low Byte (Segments A-H)
+            buf[2 + i * 2] = (masks[i] >> 8) & 0xFF; // High Byte (Segments I-N)
         }
         pins.i2cWriteBuffer(_i2cAddr, buf);
     }
 
     /**
      * Initialize the HT16K33 Alphanumeric display.
-     * @param addr I2C address (default is 0x70 / 112)
+     * @param addr I2C address (default is 112 / 0x70)
      */
     //% blockId="alpha_init" block="Initialize Alphanumeric Display at address %addr"
     //% addr.defl=112
     //% weight=100
     export function initializeAlphanumericDisplay(addr: number = 112): void {
         _i2cAddr = addr;
-        writeCmd(0x21); // Turn on internal system oscillator
-        setBlinkRate(0); // Display ON, Blink OFF
-        setBrightness(15); // Full brightness by default
+        writeCmd(0x21); // Turn on system clock oscillator
+        setBlinkRate(0); // Set display ON with blinking disabled
+        setBrightness(15); // Default to full brightness
         clear();
         _initialized = true;
     }
 
     /**
-     * Clear the display.
+     * Clear all segments on the display.
      */
     //% blockId="alpha_clear" block="Clear Display"
     //% weight=95
@@ -126,7 +140,7 @@ namespace alphaDisplay {
 
     /**
      * Set the display brightness (0 to 15).
-     * @param brightness level from 0 (dim) to 15 (max)
+     * @param brightness level from 0 (dim) to 15 (max brightness)
      */
     //% blockId="alpha_set_brightness" block="Set Brightness %brightness"
     //% brightness.min=0 brightness.max=15 brightness.defl=15
@@ -138,7 +152,7 @@ namespace alphaDisplay {
 
     /**
      * Set the display blink rate.
-     * @param rate 0 = off, 1 = 2Hz, 2 = 1Hz, 3 = 0.5Hz
+     * @param rate 0 = Off, 1 = 2Hz, 2 = 1Hz, 3 = 0.5Hz
      */
     //% blockId="alpha_set_blink" block="Set Blink Rate %rate"
     //% rate.defl=0
@@ -149,8 +163,8 @@ namespace alphaDisplay {
     }
 
     /**
-     * Set interval for text scrolling in milliseconds.
-     * @param ms delay between shift steps in milliseconds
+     * Set the scrolling speed interval for long text strings in milliseconds.
+     * @param ms delay between character shifts (minimum 50ms)
      */
     //% blockId="alpha_set_shift_interval" block="Set Shift Interval %ms ms"
     //% ms.defl=300
@@ -160,14 +174,16 @@ namespace alphaDisplay {
     }
 
     /**
-     * Display a string. Short strings (<= 4 chars) display statically; longer strings auto-scroll.
-     * @param text text to display
+     * Display a text string. Displays static text if <= 4 characters, or auto-scrolls if longer.
+     * @param text text string to display
      */
     //% blockId="alpha_show_string" block="Show String %text"
     //% text.defl="HELL"
     //% weight=75
     export function showString(text: string): void {
-        if (!_initialized) initializeAlphanumericDisplay();
+        if (!_initialized) {
+            initializeAlphanumericDisplay();
+        }
 
         if (text.length <= 4) {
             let padded = text + "    ";
@@ -178,7 +194,6 @@ namespace alphaDisplay {
                 getFontMask(padded.charAt(3))
             );
         } else {
-            // Scroll longer text
             let scrollText = text + "    ";
             for (let i = 0; i <= scrollText.length - 4; i++) {
                 writeRawDigits(
@@ -193,7 +208,7 @@ namespace alphaDisplay {
     }
 
     /**
-     * Display a number on the 4-digit display.
+     * Display a number on the display (right-aligned).
      * @param num number to display (-999 to 9999)
      */
     //% blockId="alpha_show_number" block="Show Number %num"
@@ -201,13 +216,16 @@ namespace alphaDisplay {
     //% weight=70
     export function showNumber(num: number): void {
         let str = num.toString();
+        
         if (str.length > 4) {
             str = str.substring(0, 4);
         } else {
+            // Pad spaces to the left to keep numbers right-aligned
             while (str.length < 4) {
-                str = " " + str; // Right-align numbers
+                str = " " + str;
             }
         }
+        
         showString(str);
     }
 }
